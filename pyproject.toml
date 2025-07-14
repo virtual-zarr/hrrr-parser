@@ -1,0 +1,88 @@
+[project]
+name = "hrrrparser"
+description = "Generate Virtualizarr ManifestStores for HRRR GRIB files."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Sean Harkins", email = "sean@developmentseed.org"},
+]
+license = {text = "Apache-2"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dynamic = ["version"]
+
+dependencies = [
+    "gribberish>=0.21.2",
+    "obstore>=0.6.0",
+    "virtualizarr @ git+https://github.com/zarr-developers/VirtualiZarr.git@refs/pull/672/head",
+]
+
+# Dependency sets under dependencies-groups are NOT available via PyPI
+[dependency-groups]
+dev = [
+    "mypy",
+    "pre-commit",
+    "pytest",
+    "ruff",
+]
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hrrrparser*"]
+
+[tool.ruff]
+# Same as Black.
+line-length = 88
+indent-width = 4
+target-version = "py310"
+
+exclude = [
+    "docs",
+    ".eggs"
+]
+
+# E402: module level import not at top of file
+# E731: do not assign a lambda expression, use a def
+# W503: line break before binary operator - not implimeted by ruff due to conflict with PEP8.
+
+ignore = ["E402", "E731"]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+# Indent with spaces, rather than tabs.
+indent-style = "space"
+# Respect magic trailing commas.
+skip-magic-trailing-comma = false
+# Automatically detect the appropriate line ending.
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["hrrr-parser"]
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`) codes by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+select = ["E4", "E7", "E9", "F", "I"]
+per-file-ignores = {}
+
+[tool.mypy]
+files = "hrrrparser/**/*.py"
+show_error_codes = true
+ignore_missing_imports = true
+
+[tool.codespell]
+skip = "*.ipynb"
