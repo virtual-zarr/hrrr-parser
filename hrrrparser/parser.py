@@ -61,7 +61,7 @@ def _split_file(f):
 def _scan_messages(filepath: str, reader: ObstoreReader) -> dict[str, dict]:
     levels: dict[str, dict] = {}
     for offset, size, data in _split_file(reader):
-        chunk_entry: ChunkEntry = ChunkEntry.with_validation(
+        chunk_entry: ChunkEntry = ChunkEntry.with_validation(  # type: ignore[attr-defined]
             path=filepath,
             offset=offset,
             length=size,
@@ -105,8 +105,8 @@ def _create_file_coordinate_array(
     data_type = np.dtype("float64")
     codec = HRRRGribberishCodec(var=varname).to_dict()
     metadata = create_v3_array_metadata(
-        shape=shape,
-        chunk_shape=shape,
+        shape=tuple(shape),
+        chunk_shape=tuple(shape),
         data_type=data_type,
         codecs=[codec],
         dimension_names=dims,
@@ -130,8 +130,8 @@ def _create_level_coordinate_array(
     )
     shape = [len(sorted_coord_values)]
     metadata = create_v3_array_metadata(
-        shape=shape,
-        chunk_shape=[1],
+        shape=tuple(shape),
+        chunk_shape=(1,),
         data_type=data_type,
         codecs=[codec],
         dimension_names=[coord],
@@ -166,7 +166,7 @@ def _create_variable_array(
             entries[chunk_key] = varinfo.chunk_entries[coord_value]
         else:
             # print(varname, coord_value, idx)
-            entry = ChunkEntry.with_validation(
+            entry = ChunkEntry.with_validation(  # type: ignore[attr-defined]
                 path="",
                 offset=0,
                 length=1,
@@ -174,9 +174,9 @@ def _create_variable_array(
             entries[chunk_key] = entry
 
     metadata = create_v3_array_metadata(
-        shape=shape,
+        shape=tuple(shape),
         data_type=data_type,
-        chunk_shape=chunk_shape,
+        chunk_shape=tuple(chunk_shape),
         codecs=[codec_config],
         dimension_names=varinfo.dims,
         attributes=varinfo.attrs,

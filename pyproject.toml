@@ -22,7 +22,7 @@ dynamic = ["version"]
 dependencies = [
     "gribberish>=0.21.2",
     "obstore>=0.6.0",
-    "virtualizarr @ git+https://github.com/zarr-developers/VirtualiZarr.git@refs/pull/672/head",
+    "virtualizarr @ git+https://github.com/zarr-developers/VirtualiZarr.git@develop",
 ]
 
 # Dependency sets under dependencies-groups are NOT available via PyPI
