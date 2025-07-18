@@ -26,6 +26,7 @@ from zarr.registry import register_codec
 from hrrrparser.codecs import CODEC_ID, HRRRGribberishCodec
 
 if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
     from obstore.store import ObjectStore
 
 
@@ -100,9 +101,13 @@ def _scan_messages(filepath: str, reader: ObstoreReader) -> dict[str, dict]:
 
 
 def _create_file_coordinate_array(
-    varname: str, chunk_entry: ChunkEntry, shape: list[int], dims: list[str]
+    varname: str,
+    data_type: DTypeLike,
+    chunk_entry: ChunkEntry,
+    shape: list[int],
+    dims: list[str],
 ) -> ManifestArray:
-    data_type = np.dtype("float64")
+    # data_type = np.dtype("float64")
     codec = HRRRGribberishCodec(var=varname).to_dict()
     metadata = create_v3_array_metadata(
         shape=tuple(shape),
@@ -165,7 +170,6 @@ def _create_variable_array(
         if coord_value in varinfo.chunk_entries.keys():
             entries[chunk_key] = varinfo.chunk_entries[coord_value]
         else:
-            # print(varname, coord_value, idx)
             entry = ChunkEntry.with_validation(  # type: ignore[attr-defined]
                 path="",
                 offset=0,
@@ -222,23 +226,37 @@ class HRRRParser:
         varinfo = next(iter(levels[level]["variables"].values()))
         chunk_entry = next(iter(varinfo.chunk_entries.values()))
         time_array = _create_file_coordinate_array(
-            varname="time", chunk_entry=chunk_entry, shape=[1], dims=["time"]
+            varname="time",
+            data_type=np.dtype("datetime64[s]"),
+            chunk_entry=chunk_entry,
+            shape=[1],
+            dims=["time"],
         )
         latitude_array = _create_file_coordinate_array(
             varname="latitude",
+            data_type=np.dtype("float64"),
             chunk_entry=chunk_entry,
             shape=[varinfo.shape[1], varinfo.shape[2]],
             dims=["y", "x"],
         )
         longitude_array = _create_file_coordinate_array(
             varname="longitude",
+            data_type=np.dtype("float64"),
             chunk_entry=chunk_entry,
             shape=[varinfo.shape[1], varinfo.shape[2]],
             dims=["y", "x"],
         )
+        step_array = _create_file_coordinate_array(
+            varname="step",
+            data_type=np.dtype("timedelta64[s]"),
+            chunk_entry=chunk_entry,
+            shape=[1],
+            dims=["step"],
+        )
 
         arrays = (
             {"time": time_array}
+            | {"step": step_array}
             | level_coordinate_arrays
             | variable_arrays
             | {"latitude": latitude_array}
