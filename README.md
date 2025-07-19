@@ -15,12 +15,12 @@ be added soon.
 - Using the generated VirtualiZarr `ManifstStore` or virtual dataset requires use
 of the included `HRRRGribberishCodec` for decoding.
 
-This codec can be registered with `zarr-python` via
-```
-from zarr.registry import register_codec
-from hrrrparser.codecs import CODEC_ID, HRRRGribberishCodec
-register_codec(CODEC_ID, HRRRGribberishCodec)
-```
+    This codec can be registered with `zarr-python` via
+    ```
+    from zarr.registry import register_codec
+    from hrrrparser.codecs import CODEC_ID, HRRRGribberishCodec
+    register_codec(CODEC_ID, HRRRGribberishCodec)
+    ```
 - The resulting virtual Zarr stores contain a "reference time" and "step"
   dimension (`time` and `step` respectively) that can be utilized for different “Forecast Model Run Collections” (FMRC) approaches.
   See https://xarray-indexes.readthedocs.io/earth/forecast.html for use with
