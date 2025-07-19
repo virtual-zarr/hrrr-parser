@@ -76,10 +76,6 @@ class HRRRGribberishCodec(ArrayBytesCodec):
             message = parse_grib_message_metadata(chunk_bytes, 0)
             reference_date = message.reference_date
             data = np.datetime64(reference_date, "s")  # type: ignore[no-redef]
-
-            # timestamp = reference_date.timestamp()
-            # float64_ts = np.float64(timestamp)
-            # data = float64_ts  # type: ignore[no-redef]
         elif self.var == "step":
             message = parse_grib_message_metadata(chunk_bytes, 0)
             forecast_date = message.forecast_date

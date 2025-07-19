@@ -20,9 +20,9 @@ classifiers = [
 dynamic = ["version"]
 
 dependencies = [
-    "gribberish>=0.21.2",
+    "gribberish>=0.22.0",
     "obstore>=0.6.0",
-    "virtualizarr @ git+https://github.com/zarr-developers/VirtualiZarr.git@develop",
+    "virtualizarr @ git+https://github.com/zarr-developers/VirtualiZarr.git@main",
 ]
 
 # Dependency sets under dependencies-groups are NOT available via PyPI

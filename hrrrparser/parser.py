@@ -17,7 +17,7 @@ from virtualizarr.manifests import (
     ManifestGroup,
     ManifestStore,
 )
-from virtualizarr.manifests.store import ObjectStoreRegistry, get_store_prefix
+from virtualizarr.manifests.store import ObjectStoreRegistry
 from virtualizarr.manifests.utils import create_v3_array_metadata
 from virtualizarr.types import ChunkKey
 from virtualizarr.utils import ObstoreReader
@@ -27,7 +27,7 @@ from hrrrparser.codecs import CODEC_ID, HRRRGribberishCodec
 
 if TYPE_CHECKING:
     from numpy.typing import DTypeLike
-    from obstore.store import ObjectStore
+    from virtualizarr.registry import ObjectStoreRegistry
 
 
 @dataclass
@@ -198,11 +198,28 @@ class HRRRParser:
 
     def __call__(
         self,
-        file_url: str,
-        object_store: ObjectStore,
+        url: str,
+        registry: ObjectStoreRegistry,
     ) -> ManifestStore:
-        reader = ObstoreReader(store=object_store, path=file_url)
-        levels = _scan_messages(filepath=file_url, reader=reader)
+        """
+        Parse the metadata and byte offsets from a given HRRR Hourly GRIB file to produce a VirtualiZarr
+        [ManifestStore][virtualizarr.manifests.ManifestStore].
+
+        Parameters
+        ----------
+        url
+            The URL of the input HRRR GRIB file (e.g., `"s3://bucket/hrrr.t22z.wrfsfcf16.grib2"`).
+        registry
+            An [ObjectStoreRegistry][virtualizarr.registry.ObjectStoreRegistry] for resolving urls and reading data.
+
+        Returns
+        -------
+        ManifestStore
+            A [ManifestStore][virtualizarr.manifests.ManifestStore] which provides a Zarr representation of the parsed file.
+        """
+        store, path_in_store = registry.resolve(url)
+        reader = ObstoreReader(store=store, path=path_in_store)
+        levels = _scan_messages(filepath=url, reader=reader)
 
         variable_arrays: dict[str, ManifestArray] = {}
         for level in levels.keys():
@@ -263,6 +280,5 @@ class HRRRParser:
             | {"longitude": longitude_array}
         )
         group = ManifestGroup(arrays=arrays)
-        registry = ObjectStoreRegistry({get_store_prefix(file_url): object_store})
         store = ManifestStore(store_registry=registry, group=group)
         return store
