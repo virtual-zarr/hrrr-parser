@@ -43,9 +43,15 @@ class HRRRGribberishCodec(ArrayBytesCodec):
     """Transform GRIB2 bytes into zarr arrays using gribberish library"""
 
     var: str | None
+    steps: bool = False
 
-    def __init__(self, var: str | None) -> None:
+    def __init__(
+        self,
+        var: str | None,
+        steps: int = 1,
+    ) -> None:
         object.__setattr__(self, "var", var)
+        object.__setattr__(self, "steps", steps)
 
     @classmethod
     def from_dict(cls, data: dict[str, JSON]) -> Self:
@@ -59,7 +65,13 @@ class HRRRGribberishCodec(ArrayBytesCodec):
         if not self.var:
             return {"name": CODEC_ID}
         else:
-            return {"name": CODEC_ID, "configuration": {"var": self.var}}
+            return {
+                "name": CODEC_ID,
+                "configuration": {
+                    "var": self.var,
+                    "steps": self.steps,
+                },
+            }
 
     async def _decode_single(
         self,
@@ -77,11 +89,18 @@ class HRRRGribberishCodec(ArrayBytesCodec):
             reference_date = message.reference_date
             data = np.datetime64(reference_date, "s")  # type: ignore[no-redef]
         elif self.var == "step":
-            message = parse_grib_message_metadata(chunk_bytes, 0)
-            forecast_date = message.forecast_date
-            reference_date = message.reference_date
-            step = forecast_date - reference_date
-            data = np.timedelta64(step, "s")
+            if self.steps > 1:
+                data = np.array(
+                    [np.timedelta64(i, "h") for i in range(self.steps)],
+                    dtype="timedelta64[s]",
+                )
+            else:
+                message = parse_grib_message_metadata(chunk_bytes, 0)
+                forecast_date = message.forecast_date
+                reference_date = message.reference_date
+                step = forecast_date - reference_date
+                data = np.timedelta64(step, "s")
+
         elif self.var in LEVEL_COORDINATES:
             message = parse_grib_message_metadata(chunk_bytes, 0)
             level_value = message.level_value
@@ -101,8 +120,12 @@ class HRRRGribberishCodec(ArrayBytesCodec):
         chunk_data: NDBuffer,
         chunk_spec: ArraySpec,
     ) -> Buffer | None:
-        # This is a read-only codec
-        raise NotImplementedError
+        if self.var == "time":
+            data = chunk_data.astype("datetime64[ns]")
+            return data
+        else:
+            # This is a read-only codec
+            raise NotImplementedError
 
     def compute_encoded_size(
         self, input_byte_length: int, _chunk_spec: ArraySpec

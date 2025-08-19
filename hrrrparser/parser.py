@@ -9,7 +9,7 @@ from typing import (
 )
 
 import numpy as np
-from gribberish import parse_grib_dataset
+from gribberish import parse_grib_dataset, parse_grib_message_metadata
 from virtualizarr.manifests import (
     ChunkEntry,
     ChunkManifest,
@@ -36,6 +36,7 @@ class VarInfo:
     dims: List[str]
     shape: List[int]
     attrs: Dict[str, Any]
+    step: np.timedelta64
 
 
 # Vendored function from Gribberish
@@ -59,9 +60,20 @@ def _split_file(f):
         yield start, part_size, f.read(part_size)
 
 
+def parse_step(data):
+    message = parse_grib_message_metadata(data, 0)
+    forecast_date = message.forecast_date
+    reference_date = message.reference_date
+    step = forecast_date - reference_date
+    return np.timedelta64(step, "s")
+
+
 def _scan_messages(filepath: str, reader: ObstoreReader) -> dict[str, dict]:
     levels: dict[str, dict] = {}
+    step = None
     for offset, size, data in _split_file(reader):
+        if offset == 0:
+            step = parse_step(data)
         chunk_entry: ChunkEntry = ChunkEntry.with_validation(  # type: ignore[attr-defined]
             path=filepath,
             offset=offset,
@@ -86,6 +98,7 @@ def _scan_messages(filepath: str, reader: ObstoreReader) -> dict[str, dict]:
                     dims=dims,
                     shape=var_data["values"]["shape"],
                     attrs=var_data["attrs"],
+                    step=step,
                 )
                 levels.setdefault(level_coord, {}).setdefault("variables", {})[
                     var_name
@@ -106,9 +119,9 @@ def _create_file_coordinate_array(
     chunk_entry: ChunkEntry,
     shape: list[int],
     dims: list[str],
+    steps: int = 1,
 ) -> ManifestArray:
-    # data_type = np.dtype("float64")
-    codec = HRRRGribberishCodec(var=varname).to_dict()
+    codec = HRRRGribberishCodec(var=varname, steps=steps).to_dict()
     metadata = create_v3_array_metadata(
         shape=tuple(shape),
         chunk_shape=tuple(shape),
@@ -153,30 +166,48 @@ def _create_level_coordinate_array(
 
 
 def _create_variable_array(
-    varname: str, varinfo: VarInfo, coord_values: list[str]
+    varname: str,
+    varinfo: VarInfo,
+    coord_values: list[str],
+    steps: int = 1,
 ) -> ManifestArray:
+    if steps > 1:
+        step_array = np.array(
+            [np.timedelta64(i, "h") for i in range(steps)], dtype="timedelta64[s]"
+        )
+    else:
+        step_array = np.array([varinfo.step])
+
     data_type = np.dtype("float64")
     codec_config = HRRRGribberishCodec(varname).to_dict()
     chunk_shape = varinfo.shape[:]
     chunk_shape.insert(1, 1)
+    chunk_shape.insert(1, 1)
     shape = chunk_shape[:]
-    shape[1] = len(coord_values)
+    shape[1] = steps
+    shape[2] = len(coord_values)
 
     entries: dict[ChunkKey, ChunkEntry] = {}
+
     for idx, coord_value in enumerate(coord_values):
-        key = f"0.{idx}.0.0"
-        chunk_key = ChunkKey(key)
+        for step_idx, step_value in enumerate(step_array):
+            key = f"0.{step_idx}.{idx}.0.0"
+            chunk_key = ChunkKey(key)
 
-        if coord_value in varinfo.chunk_entries.keys():
-            entries[chunk_key] = varinfo.chunk_entries[coord_value]
-        else:
-            entry = ChunkEntry.with_validation(  # type: ignore[attr-defined]
-                path="",
-                offset=0,
-                length=1,
-            )
-            entries[chunk_key] = entry
-
+            if (
+                coord_value in varinfo.chunk_entries.keys()
+                and step_value == varinfo.step
+            ):
+                entries[chunk_key] = varinfo.chunk_entries[coord_value]
+            else:
+                entry = ChunkEntry.with_validation(  # type: ignore[attr-defined]
+                    path="",
+                    offset=0,
+                    length=1,
+                )
+                entries[chunk_key] = entry
+    dims = varinfo.dims
+    dims.insert(1, "step")
     metadata = create_v3_array_metadata(
         shape=tuple(shape),
         data_type=data_type,
@@ -191,9 +222,8 @@ def _create_variable_array(
 
 
 class HRRRParser:
-    def __init__(
-        self,
-    ):
+    def __init__(self, steps: int = 1):
+        self.steps = steps
         register_codec(CODEC_ID, HRRRGribberishCodec)
 
     def __call__(
@@ -229,6 +259,7 @@ class HRRRParser:
                     varname=var,
                     varinfo=levels[level]["variables"][var],
                     coord_values=coord_values,
+                    steps=self.steps,
                 )
                 variable_arrays[var] = variable_array
 
@@ -267,8 +298,9 @@ class HRRRParser:
             varname="step",
             data_type=np.dtype("timedelta64[s]"),
             chunk_entry=chunk_entry,
-            shape=[1],
+            shape=[self.steps],
             dims=["step"],
+            steps=self.steps,
         )
 
         arrays = (
@@ -280,5 +312,5 @@ class HRRRParser:
             | {"longitude": longitude_array}
         )
         group = ManifestGroup(arrays=arrays)
-        store = ManifestStore(store_registry=registry, group=group)
+        store = ManifestStore(registry=registry, group=group)
         return store
