@@ -22,7 +22,7 @@ dynamic = ["version"]
 dependencies = [
     "gribberish>=0.22.0",
     "obstore>=0.6.0",
-    "virtualizarr[icechunk]>=2.1.1",
+    "virtualizarr[icechunk]",
 ]
 
 # Dependency sets under dependencies-groups are NOT available via PyPI
