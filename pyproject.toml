@@ -20,7 +20,7 @@ classifiers = [
 dynamic = ["version"]
 
 dependencies = [
-    "gribberish>=0.22.0",
+    "gribberish>=0.23.0",
     "obstore>=0.6.0",
     "virtualizarr>=2.1.2",
 ]

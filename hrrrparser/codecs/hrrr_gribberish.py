@@ -30,6 +30,7 @@ LEVEL_COORDINATES = [
     "eqm",
     "depth_bls",
     "hybid",
+    "nominal_top",
 ]
 
 CODEC_ID = "hrrr_gribberish"
@@ -84,6 +85,10 @@ class HRRRGribberishCodec(ArrayBytesCodec):
             message = parse_grib_message_metadata(chunk_bytes, 0)
             lat, lng = message.latlng()
             data = lat if self.var == "latitude" else lng  # type: ignore[no-redef]
+        if self.var == "x" or self.var == "y":
+            meta = parse_grib_message_metadata(chunk_bytes, 0)
+            x, y = meta.xy()
+            data = x if self.var == "x" else y
         elif self.var == "time":
             message = parse_grib_message_metadata(chunk_bytes, 0)
             reference_date = message.reference_date
@@ -100,7 +105,6 @@ class HRRRGribberishCodec(ArrayBytesCodec):
                 reference_date = message.reference_date
                 step = forecast_date - reference_date
                 data = np.timedelta64(step, "s")
-
         elif self.var in LEVEL_COORDINATES:
             message = parse_grib_message_metadata(chunk_bytes, 0)
             level_value = message.level_value

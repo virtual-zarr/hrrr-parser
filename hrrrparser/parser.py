@@ -302,6 +302,20 @@ class HRRRParser:
             dims=["step"],
             steps=self.steps,
         )
+        y_array = _create_file_coordinate_array(
+            varname="y",
+            data_type=np.dtype("float64"),
+            chunk_entry=chunk_entry,
+            shape=[varinfo.shape[1]],
+            dims=["y"],
+        )
+        x_array = _create_file_coordinate_array(
+            varname="x",
+            data_type=np.dtype("float64"),
+            chunk_entry=chunk_entry,
+            shape=[varinfo.shape[2]],
+            dims=["x"],
+        )
 
         arrays = (
             {"time": time_array}
@@ -310,6 +324,8 @@ class HRRRParser:
             | variable_arrays
             | {"latitude": latitude_array}
             | {"longitude": longitude_array}
+            | {"y": y_array}
+            | {"x": x_array}
         )
         group = ManifestGroup(arrays=arrays)
         store = ManifestStore(registry=registry, group=group)

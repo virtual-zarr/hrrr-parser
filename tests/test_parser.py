@@ -14,7 +14,11 @@ def test_parser():
     object_store = LocalStore()
     registry = ObjectStoreRegistry({scheme: object_store})
     parser = HRRRParser()
-    parser(url=url, registry=registry)
+    manifest_store = parser(url=url, registry=registry)
+    ds = xr.open_dataset(
+        manifest_store, engine="zarr", consolidated=False, zarr_format=3
+    )
+    assert ds["x"][0] != 0
 
 
 def test_parser_multi_steps():
