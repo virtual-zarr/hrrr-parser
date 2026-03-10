@@ -10,17 +10,21 @@ from typing import (
 
 import numpy as np
 from gribberish import parse_grib_dataset, parse_grib_message_metadata
+from obspec_utils.protocols import ReadableFile
+from obspec_utils.readers import BufferedStoreReader
+from obspec_utils.registry import ObjectStoreRegistry
 from virtualizarr.manifests import (
-    ChunkEntry,
     ChunkManifest,
     ManifestArray,
     ManifestGroup,
     ManifestStore,
 )
-from virtualizarr.manifests.store import ObjectStoreRegistry
+from virtualizarr.manifests.manifest import (
+    ChunkEntry,
+)
 from virtualizarr.manifests.utils import create_v3_array_metadata
+from virtualizarr.parsers.typing import ReaderFactory
 from virtualizarr.types import ChunkKey
-from virtualizarr.utils import ObstoreReader
 from zarr.registry import register_codec
 
 from hrrrparser.codecs import CODEC_ID, HRRRGribberishCodec
@@ -68,7 +72,7 @@ def parse_step(data):
     return np.timedelta64(step, "s")
 
 
-def _scan_messages(filepath: str, reader: ObstoreReader) -> dict[str, dict]:
+def _scan_messages(filepath: str, reader: ReadableFile) -> dict[str, dict]:
     levels: dict[str, dict] = {}
     step = None
     for offset, size, data in _split_file(reader):
@@ -222,7 +226,12 @@ def _create_variable_array(
 
 
 class HRRRParser:
-    def __init__(self, steps: int = 1):
+    def __init__(
+        self,
+        reader_factory: ReaderFactory = BufferedStoreReader,
+        steps: int = 1,
+    ):
+        self.reader_factory = reader_factory
         self.steps = steps
         register_codec(CODEC_ID, HRRRGribberishCodec)
 
@@ -248,7 +257,7 @@ class HRRRParser:
             A [ManifestStore][virtualizarr.manifests.ManifestStore] which provides a Zarr representation of the parsed file.
         """
         store, path_in_store = registry.resolve(url)
-        reader = ObstoreReader(store=store, path=path_in_store)
+        reader = self.reader_factory(store, path_in_store)
         levels = _scan_messages(filepath=url, reader=reader)
 
         variable_arrays: dict[str, ManifestArray] = {}

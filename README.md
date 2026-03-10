@@ -26,5 +26,5 @@ of the included `HRRRGribberishCodec` for decoding.
   See https://xarray-indexes.readthedocs.io/earth/forecast.html for use with
   valid time approaches.
 
-- See `/examples/surface_local.ipynb` for more detailed usage and file
+- See `/examples/icechunk_region.ipynb` and `/examples/manifeststore.ipynb` for more detailed usage and file
   concatenation options.
