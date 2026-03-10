@@ -1,8 +1,8 @@
 import os
 
 import xarray as xr
+from obspec_utils.registry import ObjectStoreRegistry
 from obstore.store import LocalStore
-from virtualizarr.manifests.store import ObjectStoreRegistry
 
 from hrrrparser import HRRRParser
 
